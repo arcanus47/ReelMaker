@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+.venv-build/
+venv/
+ENV/
+
+# Packaging / build output
+build/
+dist/
+*.log
+REELMAKER.spec
+
+# User data and generated media
+*.db
+*.sqlite
+*.sqlite3
+projects/*
+!projects/.gitkeep
+exports/*
+!exports/.gitkeep
+temp/*
+!temp/.gitkeep
+logs/*
+!logs/.gitkeep
+models/*
+!models/.gitkeep
+
+# Local FFmpeg binaries (download separately; do not commit executables)
+app/tools/ffmpeg/bin/*.exe
+app/tools/ffmpeg/bin/*.dll
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-build/
+venv/
+
+# Build
+build/
+dist/
+
+# Datos locales
+*.db
+*.sqlite
+*.sqlite3
+
+# FFmpeg para Windows
+app/tools/ffmpeg/bin/*.exe
+app/tools/ffmpeg/bin/*.dll

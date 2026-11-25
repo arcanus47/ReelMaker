@@ -1,0 +1,74 @@
+name: Build REELMAKER for Windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: "x64"
+
+      - name: Download FFmpeg
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path "app/tools/ffmpeg/bin" | Out-Null
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "$env:RUNNER_TEMP/ffmpeg.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP/ffmpeg.zip" -DestinationPath "$env:RUNNER_TEMP/ffmpeg" -Force
+          $ffmpeg = Get-ChildItem "$env:RUNNER_TEMP/ffmpeg" -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+          $ffprobe = Get-ChildItem "$env:RUNNER_TEMP/ffmpeg" -Recurse -Filter "ffprobe.exe" | Select-Object -First 1
+          if (-not $ffmpeg -or -not $ffprobe) { throw "No se encontraron ffmpeg.exe/ffprobe.exe" }
+          Copy-Item $ffmpeg.FullName "app/tools/ffmpeg/bin/ffmpeg.exe"
+          Copy-Item $ffprobe.FullName "app/tools/ffmpeg/bin/ffprobe.exe"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.txt
+
+      - name: Run tests
+        shell: pwsh
+        run: |
+          $env:PATH = "$PWD/app/tools/ffmpeg/bin;$env:PATH"
+          python -m compileall -q app tests
+          python -m unittest discover -s tests -v
+
+      - name: Build one-folder EXE
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --windowed --onedir --name REELMAKER `
+            --icon "REELMAKER.ico" `
+            --contents-directory "_internal" `
+            --collect-all faster_whisper `
+            --collect-all ctranslate2 `
+            --collect-all av `
+            --collect-all tokenizers `
+            --collect-all huggingface_hub `
+            --collect-all yt_dlp `
+            --add-binary "app/tools/ffmpeg/bin/ffmpeg.exe;ffmpeg/bin" `
+            --add-binary "app/tools/ffmpeg/bin/ffprobe.exe;ffmpeg/bin" `
+            app/main.py
+          if (-not (Test-Path "dist/REELMAKER/REELMAKER.exe")) { throw "No se generó REELMAKER.exe" }
+          New-Item -ItemType Directory -Force -Path "dist/REELMAKER/_internal/ffmpeg/bin" | Out-Null
+          Get-ChildItem "app/tools/ffmpeg/bin" -Filter "*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName "dist/REELMAKER/_internal/ffmpeg/bin/"
+          }
+
+      - name: Upload Windows application folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: REELMAKER-Windows-x64
+          path: dist/REELMAKER/
+          if-no-files-found: error
+          retention-days: 14
